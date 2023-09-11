@@ -9,7 +9,7 @@ from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 
 # If modifying these scopes, delete the file token.json.
-SCOPES = ['https://www.googleapis.com/auth/gmail.modify']
+SCOPES = ['https://mail.google.com/']
 
 
 def generate_token_file():
@@ -46,7 +46,7 @@ def read_emails():
         service = build('gmail', 'v1', credentials=creds)
 
         # Define multiple keywords to search for
-        keywords = ["linked-in","certificate"]  # Add keywords
+        keywords = [""]  # Add keywords
 
         # Create a query that uses the OR operator for multiple keywords
         query = " OR ".join(f"subject:{keyword}" for keyword in keywords)
@@ -68,4 +68,33 @@ def read_emails():
         print(f'An error occurred: {error}')
 
 
+def delete_emails_with_keyword(keyword):
+    creds = generate_token_file()
+    try:
+        # Call the Gmail API with a query to filter emails
+        service = build('gmail', 'v1', credentials=creds)
+        query = f"subject:{keyword}"  # Use the specified keyword
+
+        results = service.users().messages().list(userId='me', q=query).execute()
+        messages = results.get('messages', [])
+
+        if not messages:
+            print(f'No emails found with the keyword: {keyword}')
+            return
+
+        print(f'Deleting emails with the keyword: {keyword}')
+
+        for message in messages:
+            msg = service.users().messages().get(userId='me', id=message['id']).execute()
+            subject = [header['value'] for header in msg['payload']['headers'] if header['name'] == 'Subject'][0]
+            print(f'Deleting Subject: {subject}')
+            # Delete each email
+            service.users().messages().delete(userId='me', id=message['id']).execute()
+
+
+    except HttpError as error:
+        print(f'An error occurred: {error}')
+
+
 read_emails()
+delete_emails_with_keyword("udemy")
