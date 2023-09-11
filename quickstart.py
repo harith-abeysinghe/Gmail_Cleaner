@@ -9,48 +9,63 @@ from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 
 # If modifying these scopes, delete the file token.json.
-SCOPES = ['https://www.googleapis.com/auth/gmail.readonly']
+SCOPES = ['https://www.googleapis.com/auth/gmail.modify']
 
 
-def main():
-    """Shows basic usage of the Gmail API.
-    Lists the user's Gmail labels.
-    """
+def generate_token_file():
     creds = None
-    # The file token.json stores the user's access and refresh tokens, and is
-    # created automatically when the authorization flow completes for the first
-    # time.
-    if os.path.exists('token.json'):
-        creds = Credentials.from_authorized_user_file('token.json', SCOPES)
-    # If there are no (valid) credentials available, let the user log in.
-    if not creds or not creds.valid:
-        if creds and creds.expired and creds.refresh_token:
-            creds.refresh(Request())
-        else:
-            flow = InstalledAppFlow.from_client_secrets_file(
-                'client_credentials.json', SCOPES)
-            creds = flow.run_local_server(port=0)
-        # Save the credentials for the next run
-        with open('token.json', 'w') as token:
-            token.write(creds.to_json())
 
     try:
-        # Call the Gmail API
-        service = build('gmail', 'v1', credentials=creds)
-        results = service.users().labels().list(userId='me').execute()
-        labels = results.get('labels', [])
+        # Load existing credentials from token.json if it exists
+        if os.path.exists('token.json'):
+            creds = Credentials.from_authorized_user_file('token.json', SCOPES)
 
-        if not labels:
-            print('No labels found.')
+        # If there are no (valid) credentials available, initiate the authentication flow
+        if not creds or not creds.valid:
+            if creds and creds.expired and creds.refresh_token:
+                creds.refresh(Request())
+            else:
+                flow = InstalledAppFlow.from_client_secrets_file(
+                    'client_credentials.json', SCOPES)
+                creds = flow.run_local_server(port=0)
+
+            # Save the credentials for the next run
+            with open('token.json', 'w') as token:
+                token.write(creds.to_json())
+
+        return creds
+
+    except Exception as e:
+        print(f'An error occurred during authentication: {str(e)}')
+        return None
+
+def read_emails():
+    creds = generate_token_file()
+    try:
+        # Call the Gmail API with a query to filter emails
+        service = build('gmail', 'v1', credentials=creds)
+
+        # Define multiple keywords to search for
+        keywords = ["linked-in","certificate"]  # Add keywords
+
+        # Create a query that uses the OR operator for multiple keywords
+        query = " OR ".join(f"subject:{keyword}" for keyword in keywords)
+        results = service.users().messages().list(userId='me', q=query).execute()
+        messages = results.get('messages', [])
+
+        if not messages:
+            print('No emails found with the specified keyword.')
             return
-        print('Labels:')
-        for label in labels:
-            print(label['name'])
+
+        print('Emails with the specified keyword:')
+        for message in messages:
+            msg = service.users().messages().get(userId='me', id=message['id']).execute()
+            subject = [header['value'] for header in msg['payload']['headers'] if header['name'] == 'Subject'][0]
+            print(f'Subject: {subject}')
+
 
     except HttpError as error:
-
         print(f'An error occurred: {error}')
 
 
-if __name__ == '__main__':
-    main()
+read_emails()
