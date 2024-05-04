@@ -25,7 +25,7 @@ This script utilizes the Gmail API to manage your inbox efficiently by filtering
 ## Usage
 1. Run the script:
     ```bash
-    python gmail_cleaner.py
+    python main.py
     ```
 2. The script will prompt you to authenticate your Google account and authorize access to the Gmail API. Follow the instructions in the terminal.
 3. Once authenticated, the script will read emails matching specified keywords and display their subjects.
